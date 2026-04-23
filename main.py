@@ -9,22 +9,22 @@
 # ///
 """
 usage:
-uv run --env-file .env --script main.py
+uv run --env-file .env --script main.py <file>
 """
 
+import typer
 import torch
 from transformers import AutoModelForTokenClassification, AutoTokenizer
-import typer
 
 app = typer.Typer()
 
 @app.command()
-def check():
+def check(file: typer.FileText = typer.Argument(..., help="チェック対象のテキストファイル")):
     print("モデルの準備をしています...")
     tokenizer = AutoTokenizer.from_pretrained("openai/privacy-filter")
     model = AutoModelForTokenClassification.from_pretrained("openai/privacy-filter", device_map="auto")
 
-    text = "My name is Alice Smith"
+    text = file.read()
     inputs = tokenizer(text, return_tensors="pt").to(model.device)
 
     print("チェック開始します...")
