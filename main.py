@@ -1,0 +1,39 @@
+# /// script
+# requires-python = ">=3.13"
+# dependencies = [
+#     "torch==2.11.0",
+#     "transformers==5.6.1",
+#     "typer==0.24.1",
+#     "accelerate==1.13.0",
+# ]
+# ///
+"""
+usage:
+uv run --env-file .env --script main.py
+"""
+
+import torch
+from transformers import AutoModelForTokenClassification, AutoTokenizer
+import typer
+
+app = typer.Typer()
+
+@app.command()
+def check():
+    print("モデルの準備をしています...")
+    tokenizer = AutoTokenizer.from_pretrained("openai/privacy-filter")
+    model = AutoModelForTokenClassification.from_pretrained("openai/privacy-filter", device_map="auto")
+
+    inputs = tokenizer("My name is Alice Smith", return_tensors="pt").to(model.device)
+
+    print("チェック開始します...")
+    with torch.no_grad():
+        outputs = model(**inputs)
+
+    predicted_token_class_ids = outputs.logits.argmax(dim=-1)
+    predicted_token_classes = [model.config.id2label[token_id.item()] for token_id in predicted_token_class_ids[0]]
+    print(predicted_token_classes)
+
+
+if __name__ == "__main__":
+    app()
