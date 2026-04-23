@@ -9,7 +9,7 @@
 # ///
 """
 usage:
-uv run --env-file .env --script main.py <file>
+uv run --env-file .env --script main.py sample.md
 """
 
 import typer
