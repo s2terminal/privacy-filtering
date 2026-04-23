@@ -24,7 +24,8 @@ def check():
     tokenizer = AutoTokenizer.from_pretrained("openai/privacy-filter")
     model = AutoModelForTokenClassification.from_pretrained("openai/privacy-filter", device_map="auto")
 
-    inputs = tokenizer("My name is Alice Smith", return_tensors="pt").to(model.device)
+    text = "My name is Alice Smith"
+    inputs = tokenizer(text, return_tensors="pt").to(model.device)
 
     print("チェック開始します...")
     with torch.no_grad():
@@ -32,7 +33,18 @@ def check():
 
     predicted_token_class_ids = outputs.logits.argmax(dim=-1)
     predicted_token_classes = [model.config.id2label[token_id.item()] for token_id in predicted_token_class_ids[0]]
-    print(predicted_token_classes)
+    tokens = tokenizer.convert_ids_to_tokens(inputs["input_ids"][0])
+
+    print(f"元の文字列: {text}")
+    print("個人情報候補:")
+    has_candidate = False
+    for token, label in zip(tokens, predicted_token_classes):
+        if label != "O":
+            has_candidate = True
+            print(f"  {token:<15} -> {label}")
+
+    if not has_candidate:
+        print("  （候補は見つかりませんでした）")
 
 
 if __name__ == "__main__":
