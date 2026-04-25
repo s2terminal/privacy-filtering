@@ -124,10 +124,12 @@ def check(files: list[typer.FileText] = typer.Argument(..., help="チェック�
 
                 if prefix == "B":
                     while i < len(token_ids):
+                        next_label = predicted_token_classes[i]
+                        if not (next_label.startswith("I-") or next_label.startswith("E-")):
+                            break
                         span_ids.append(token_ids[i])
-                        end_label = predicted_token_classes[i]
                         i += 1
-                        if end_label.startswith("E-"):
+                        if next_label.startswith("E-"):
                             break
 
                 decoded = tokenizer.decode(span_ids).strip()
