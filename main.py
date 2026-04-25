@@ -7,6 +7,20 @@
 #     "accelerate==1.13.0",
 #     "tqdm==4.67.3",
 # ]
+#
+# [tool.uv]
+# # 問題: uv run のたびに nvidia-cusparselt-cu13 が Uninstalled/Installed され続ける
+# # 原因: nvidia_cusparselt_cu13-0.8.0-py3-none-manylinux2014_aarch64.whl は
+# #       ファイル名が aarch64 だが、wheel 内の WHEEL メタデータが
+# #       「Tag: py3-none-manylinux2014_sbsa」と誤記されている NVIDIA のパッケージングバグ。
+# #       uv は毎回 "aarch64 ≠ sbsa" と判断して再インストールを繰り返す。
+# # 対処: override-dependencies で aarch64 Linux での nvidia-cusparselt-cu13 のインストールを除外。
+# #       このマシンは CPU 推論のため不要なパッケージなので実害はない。
+# #       x86_64 Linux の GPU マシンには影響しない。
+# #       aarch64 + NVIDIA GPU (Jetson 等) で動かす場合はこの override を削除すること。
+# override-dependencies = [
+#     "nvidia-cusparselt-cu13 ; platform_machine != 'aarch64'",
+# ]
 # ///
 """
 usage:
