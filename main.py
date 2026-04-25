@@ -136,7 +136,7 @@ def check(files: list[typer.FileText] = typer.Argument(..., help="チェック�
                         break
 
                 decoded = tokenizer.decode(span_ids).strip()
-                results.append(f"  {decoded:<15} -> {base_label}")
+                results.append(f"  {base_label} -> {decoded}")
 
         print("個人情報候補:")
         if results:
