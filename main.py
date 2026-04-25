@@ -118,19 +118,22 @@ def check(files: list[typer.FileText] = typer.Argument(..., help="チェック�
                     i += 1
                     continue
 
-                prefix, base_label = label.split("-", 1)
+                _, base_label = label.split("-", 1)
                 span_ids = [token_ids[i]]
                 i += 1
 
-                if prefix == "B":
-                    while i < len(token_ids):
-                        next_label = predicted_token_classes[i]
-                        if not (next_label.startswith("I-") or next_label.startswith("E-")):
-                            break
-                        span_ids.append(token_ids[i])
-                        i += 1
-                        if next_label.startswith("E-"):
-                            break
+                # 同じ base_label が連続する限り収集（S-の連続・孤立I-/E-にも対応）
+                while i < len(token_ids):
+                    next_label = predicted_token_classes[i]
+                    if next_label == "O" or next_label.startswith("B-"):
+                        break
+                    next_prefix, next_base = next_label.split("-", 1)
+                    if next_base != base_label:
+                        break
+                    span_ids.append(token_ids[i])
+                    i += 1
+                    if next_prefix == "E":
+                        break
 
                 decoded = tokenizer.decode(span_ids).strip()
                 results.append(f"  {decoded:<15} -> {base_label}")
