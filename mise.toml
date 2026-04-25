@@ -4,5 +4,8 @@ uv = "latest"
 [env]
 _.file = { path = ".env" }
 
-[tasks.main]
-run = "uv run --script main.py"
+[tasks.download]
+run = "uv run --script main.py download"
+
+[tasks.check]
+run = "uv run --offline --script main.py check"

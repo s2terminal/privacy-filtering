@@ -10,13 +10,30 @@
 # ///
 """
 usage:
-uv run --env-file .env --script main.py sample.md
+  初回（モデルとパッケージのダウンロード）:
+    uv run --script main.py download
+
+  以降（オフライン実行）:
+    uv run --offline --script main.py check sample.txt
+
+  mise タスク:
+    mise run download
+    mise run check sample.txt
 """
+
+import os
+import sys
+
+# transformers のインポート前に設定しないとオフラインモードが有効にならない
+if len(sys.argv) > 1 and sys.argv[1] == "check":
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
 
 import typer
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForTokenClassification, AutoTokenizer
+
+MODEL_NAME = "openai/privacy-filter"
 
 app = typer.Typer()
 
@@ -48,10 +65,20 @@ def split_into_chunks(text: str, max_chars: int = 800) -> list[str]:
 
 
 @app.command()
+def download():
+    """モデルをHugging Faceからダウンロードしてローカルにキャッシュします。"""
+    print("モデルをダウンロードしています...")
+    AutoTokenizer.from_pretrained(MODEL_NAME)
+    AutoModelForTokenClassification.from_pretrained(MODEL_NAME)
+    print("ダウンロード完了しました。")
+
+
+@app.command()
 def check(file: typer.FileText = typer.Argument(..., help="チェック対象のテキストファイル")):
+    """テキストファイルの個人情報をオフラインでチェックします（事前に download コマンドが必要）。"""
     print("モデルの準備をしています...")
-    tokenizer = AutoTokenizer.from_pretrained("openai/privacy-filter")
-    model = AutoModelForTokenClassification.from_pretrained("openai/privacy-filter", device_map="auto")
+    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+    model = AutoModelForTokenClassification.from_pretrained(MODEL_NAME, device_map="auto")
     print("model.device:", model.device)
 
     max_length = model.config.max_position_embeddings
