@@ -62,8 +62,7 @@ def check(file: typer.FileText = typer.Argument(..., help="チェック対象の
     print(f"テキストを {len(chunks)} チャンクに分割しました")
 
     print("チェック開始します...")
-    has_candidate = False
-    print("個人情報候補:")
+    results: list[str] = []
     for chunk in tqdm(chunks, desc="チャンク処理", unit="chunk"):
         inputs = tokenizer(
             chunk,
@@ -88,7 +87,6 @@ def check(file: typer.FileText = typer.Argument(..., help="チェック対象の
                 i += 1
                 continue
 
-            has_candidate = True
             prefix, base_label = label.split("-", 1)
             span_ids = [token_ids[i]]
             i += 1
@@ -102,9 +100,13 @@ def check(file: typer.FileText = typer.Argument(..., help="チェック対象の
                         break
 
             decoded = tokenizer.decode(span_ids).strip()
-            tqdm.write(f"  {decoded:<15} -> {base_label}")
+            results.append(f"  {decoded:<15} -> {base_label}")
 
-    if not has_candidate:
+    print("個人情報候補:")
+    if results:
+        for line in results:
+            print(line)
+    else:
         print("  （候補は見つかりませんでした）")
 
 
