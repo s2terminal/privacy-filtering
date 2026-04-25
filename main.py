@@ -5,6 +5,7 @@
 #     "transformers==5.6.1",
 #     "typer==0.24.1",
 #     "accelerate==1.13.0",
+#     "tqdm==4.67.3",
 # ]
 # ///
 """
@@ -14,6 +15,7 @@ uv run --env-file .env --script main.py sample.md
 
 import typer
 import torch
+from tqdm import tqdm
 from transformers import AutoModelForTokenClassification, AutoTokenizer
 
 app = typer.Typer()
@@ -62,8 +64,7 @@ def check(file: typer.FileText = typer.Argument(..., help="チェック対象の
     print("チェック開始します...")
     has_candidate = False
     print("個人情報候補:")
-    for chunk_index, chunk in enumerate(chunks, 1):
-        print(f"  [チャンク {chunk_index}/{len(chunks)}]")
+    for chunk in tqdm(chunks, desc="チャンク処理", unit="chunk"):
         inputs = tokenizer(
             chunk,
             return_tensors="pt",
@@ -101,7 +102,7 @@ def check(file: typer.FileText = typer.Argument(..., help="チェック対象の
                         break
 
             decoded = tokenizer.decode(span_ids).strip()
-            print(f"  {decoded:<15} -> {base_label}")
+            tqdm.write(f"  {decoded:<15} -> {base_label}")
 
     if not has_candidate:
         print("  （候補は見つかりませんでした）")
