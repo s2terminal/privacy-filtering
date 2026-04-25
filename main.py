@@ -15,10 +15,12 @@ usage:
 
   以降（オフライン実行）:
     uv run --offline --script main.py check sample.txt
+    uv run --offline --script main.py check ./*.txt
 
   mise タスク:
     mise run download
     mise run check sample.txt
+    mise run check ./*.txt
 """
 
 import os
@@ -74,7 +76,7 @@ def download():
 
 
 @app.command()
-def check(file: typer.FileText = typer.Argument(..., help="チェック対象のテキストファイル")):
+def check(files: list[typer.FileText] = typer.Argument(..., help="チェック対象のテキストファイル（複数指定可、glob展開対応）")):
     """テキストファイルの個人情報をオフラインでチェックします（事前に download コマンドが必要）。"""
     print("モデルの準備をしています...")
     tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
@@ -84,57 +86,59 @@ def check(file: typer.FileText = typer.Argument(..., help="チェック対象の
     max_length = model.config.max_position_embeddings
     max_chars = 4096
 
-    text = file.read()
-    chunks = split_into_chunks(text, max_chars=max_chars)
-    print(f"テキストを {len(chunks)} チャンクに分割しました")
+    for file in files:
+        print(f"\n--- {file.name} ---")
+        text = file.read()
+        chunks = split_into_chunks(text, max_chars=max_chars)
+        print(f"テキストを {len(chunks)} チャンクに分割しました")
 
-    print("チェック開始します...")
-    results: list[str] = []
-    for chunk in tqdm(chunks, desc="チャンク処理", unit="chunk"):
-        inputs = tokenizer(
-            chunk,
-            return_tensors="pt",
-            max_length=max_length,
-            truncation=True,
-        ).to(model.device)
+        print("チェック開始します...")
+        results: list[str] = []
+        for chunk in tqdm(chunks, desc="チャンク処理", unit="chunk"):
+            inputs = tokenizer(
+                chunk,
+                return_tensors="pt",
+                max_length=max_length,
+                truncation=True,
+            ).to(model.device)
 
-        with torch.no_grad():
-            outputs = model(**inputs)
+            with torch.no_grad():
+                outputs = model(**inputs)
 
-        token_ids = inputs["input_ids"][0].tolist()
-        predicted_token_classes = [
-            model.config.id2label[t.item()]
-            for t in outputs.logits[0].argmax(dim=-1)
-        ]
+            token_ids = inputs["input_ids"][0].tolist()
+            predicted_token_classes = [
+                model.config.id2label[t.item()]
+                for t in outputs.logits[0].argmax(dim=-1)
+            ]
 
-        i = 0
-        while i < len(token_ids):
-            label = predicted_token_classes[i]
-            if label == "O":
-                i += 1
-                continue
-
-            prefix, base_label = label.split("-", 1)
-            span_ids = [token_ids[i]]
-            i += 1
-
-            if prefix == "B":
-                while i < len(token_ids):
-                    span_ids.append(token_ids[i])
-                    end_label = predicted_token_classes[i]
+            i = 0
+            while i < len(token_ids):
+                label = predicted_token_classes[i]
+                if label == "O":
                     i += 1
-                    if end_label.startswith("E-"):
-                        break
+                    continue
 
-            decoded = tokenizer.decode(span_ids).strip()
-            results.append(f"  {decoded:<15} -> {base_label}")
+                prefix, base_label = label.split("-", 1)
+                span_ids = [token_ids[i]]
+                i += 1
 
-    print("個人情報候補:")
-    if results:
-        for line in results:
-            print(line)
-    else:
-        print("  （候補は見つかりませんでした）")
+                if prefix == "B":
+                    while i < len(token_ids):
+                        span_ids.append(token_ids[i])
+                        end_label = predicted_token_classes[i]
+                        i += 1
+                        if end_label.startswith("E-"):
+                            break
+
+                decoded = tokenizer.decode(span_ids).strip()
+                results.append(f"  {decoded:<15} -> {base_label}")
+
+        print("個人情報候補:")
+        if results:
+            for line in results:
+                print(line)
+        else:
+            print("  （候補は見つかりませんでした）")
 
 
 if __name__ == "__main__":
